@@ -1,45 +1,43 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const fetch = require("node-fetch");
+import express from 'express';
+import fetch from 'node-fetch'; // لو Node.js قديم ممكن تستخدم axios بدل fetch
 
 const app = express();
-app.use(bodyParser.json());
+const PORT = process.env.PORT || 3000;
 
-// بيانات بوت التلجرام
-const TELEGRAM_BOT_TOKEN = "8492077880:AAH8YiNnJswolfkF9S_md_qXseX9iXFI3bY";
-const TELEGRAM_CHAT_ID = "8080222077";
+// إعدادات بوت التليجرام
+const TELEGRAM_BOT_TOKEN = '8492077880:AAH8YiNnJswolfkF9S_md_qXseX9iXFI3bY';
+const CHAT_ID = '8080222077';
 
-// دالة إرسال الرسائل إلى تلجرام
-async function sendToTelegram(message) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: message,
-    }),
-  });
-}
+app.use(express.json()); // مهم: قراءة JSON من TradingView
 
-// Webhook endpoint
-app.post("/webhook", async (req, res) => {
-  console.log("Received signal:", req.body);
+// نقطة استقبال إشارات TradingView
+app.post('/webhook', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('وصلت الإشارة من TradingView:', data);
 
-  // نص الرسالة للتلجرام
-  const signalMessage = `🚨 إشارة جديدة 🚨
-الرمز: ${req.body.symbol || "غير محدد"}
-العملية: ${req.body.action || "?"}
-السعر: ${req.body.price || "?"}`;
+    // نص الرسالة المرسل للتليجرام
+    const message = data.message || JSON.stringify(data);
 
-  // إرسالها للتلجرام
-  await sendToTelegram(signalMessage);
+    // إرسال الرسالة إلى التليجرام
+    const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    await fetch(telegramUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: CHAT_ID, text: message }),
+    });
 
-  res.status(200).send("Signal received and sent to Telegram ✅");
+    res.status(200).send('تم استلام الإشارة ✅');
+  } catch (err) {
+    console.error('خطأ في استقبال الإشارة:', err);
+    res.status(500).send('حدث خطأ');
+  }
+});
+
+// نقطة اختبار البوت (اختياري)
+app.get('/test', (req, res) => {
+  res.send('البوت يعمل بنجاح ✅');
 });
 
 // تشغيل السيرفر
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
