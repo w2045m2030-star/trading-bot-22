@@ -1,38 +1,50 @@
-import express from "express";
-import bodyParser from "body-parser";
-import fetch from "node-fetch";
+const express = require("express");
+const bodyParser = require("body-parser");
+const fetch = require("node-fetch");
 
 const app = express();
 app.use(bodyParser.json());
 
-const TELEGRAM_TOKEN = "8492077880:AAH8YiNnJswolfkF9S_md_qXseX9iXFI3bY";
-const CHAT_ID = "8080222077";
+// بيانات بوت التلجرام
+const TELEGRAM_BOT_TOKEN = "8492077880:AAH8YiNnJswolfkF9S_md_qXseX9iXFI3bY";
+const TELEGRAM_CHAT_ID = "8080222077";
 
-app.post("/webhook", async (req, res) => {
+// دالة إرسال الرسائل إلى تلجرام
+async function sendToTelegram(message) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
   try {
-    const alertMessage = JSON.stringify(req.body, null, 2);
-
-    // إرسال الرسالة إلى التلجرام
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: `🚨 تنبيه من TradingView:\n\n${alertMessage}`,
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message,
       }),
     });
-
-    res.status(200).send("Alert received and sent to Telegram ✅");
-  } catch (error) {
-    console.error("Error sending alert:", error);
-    res.status(500).send("Error");
+    console.log("✅ تم إرسال الرسالة إلى تليجرام:", message);
+  } catch (err) {
+    console.error("❌ خطأ أثناء الإرسال إلى تليجرام:", err);
   }
+}
+
+// Webhook endpoint
+app.post("/webhook", async (req, res) => {
+  console.log("📩 إشارة جديدة من TradingView:", req.body);
+
+  // صياغة الرسالة
+  const signalMessage = `🚨 إشارة جديدة 🚨
+الرمز: ${req.body.symbol || "غير محدد"}
+العملية: ${req.body.action || "?"}
+السعر: ${req.body.price || "?"}`;
+
+  // إرسال إلى تليجرام
+  await sendToTelegram(signalMessage);
+
+  res.status(200).send("Signal received and sent to Telegram ✅");
 });
 
-app.get("/", (req, res) => {
-  res.send("🚀 Bot server is running!");
-});
-
-app.listen(10000, () => {
-  console.log("Server is running on port 10000");
+// تشغيل السيرفر
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
