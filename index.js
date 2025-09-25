@@ -1,48 +1,27 @@
 import express from "express";
-import fetch from "node-fetch";
+import bodyParser from "body-parser";
+import fs from "fs";
 
 const app = express();
-app.use(express.json());
-
-// التوكن والـ ID
-const TELEGRAM_TOKEN = "8492077880:AAFLY_UAzKSWunVkocwS5M-Sr49v1XA85B8";
-const CHAT_ID = "8080222077"; // ID حقك
-
-// دالة إرسال رسالة إلى تليجرام
-async function sendToTelegram(message) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID,
-      text: message,
-    }),
-  });
-}
-
-// صفحة اختبار
-app.get("/", (req, res) => {
-  res.send("🚀 البوت شغال ومربوط بـ Telegram");
-});
+app.use(bodyParser.json());
 
 // Webhook من TradingView
 app.post("/webhook", async (req, res) => {
-  console.log("📩 Webhook received:", req.body);
+  console.log("📩 Received signal:", req.body);
 
-  try {
-    let msg = "📊 إشارة جديدة من TradingView:\n" + JSON.stringify(req.body, null, 2);
-    await sendToTelegram(msg);
-    res.status(200).send("تم الإرسال ✅");
-  } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).send("فشل الإرسال ❌");
+  let action = req.body.action || "";
+  if (["BUY", "SELL", "CLOSE"].includes(action)) {
+    fs.writeFileSync("signals.txt", action); // نكتب الإشارة في ملف
+    console.log(`✅ Signal saved to file: ${action}`);
+  } else {
+    console.log("⚠️ Invalid signal, ignored.");
   }
+
+  res.status(200).send("Signal processed ✅");
 });
 
 // تشغيل السيرفر
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
-  sendToTelegram("✅ السيرفر بدأ ويستقبل الإشارات الآن");
+  console.log(`🚀 Server running on port ${PORT}`);
 });
