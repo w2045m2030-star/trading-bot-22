@@ -1,27 +1,31 @@
-
 import express from 'express';
 import fetch from 'node-fetch';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Render عادة يعطي المنفذ من process.env.PORT
 
-// إعدادات بوت التليجرام
-const TELEGRAM_BOT_TOKEN = '8492077880:AAH8YiNnJswolfkF9S_md_qXseX9iXFI3bY';
+// === 1️⃣ إعدادات البوت ===
+const TELEGRAM_BOT_TOKEN = '8492077880:AAFO6r_G-bWcpGrY2R49Iyz5V-jDQuTyTXM';
 const CHAT_ID = '8080222077';
 
+// === 2️⃣ Middleware لتحليل JSON ===
 app.use(express.json());
 
+// === 3️⃣ Queue لإرسال الرسائل بشكل متسلسل ===
 let queue = [];
 let isSending = false;
 
+// === 4️⃣ استقبال إشارات TradingView ===
 app.post('/webhook', (req, res) => {
   const data = req.body;
-  const message = data.message || JSON.stringify(data);
+  const message = data.message || JSON.stringify(data, null, 2);
+  console.log("وصلت إشارة جديدة:", message);
   queue.push(message);
   res.status(200).send('تم استلام الإشارة ✅');
   processQueue();
 });
 
+// === 5️⃣ معالجة Queue ===
 async function processQueue() {
   if (isSending || queue.length === 0) return;
   isSending = true;
@@ -29,27 +33,39 @@ async function processQueue() {
   while (queue.length > 0) {
     const msg = queue.shift();
     await sendToTelegram(msg);
-    await delay(1500);
+    await delay(1500); // فترة قصيرة لتجنب حظر Telegram
   }
 
   isSending = false;
 }
 
+// === 6️⃣ إرسال الرسالة للتليجرام مع فحص الأخطاء ===
 async function sendToTelegram(message) {
-  const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-  await fetch(telegramUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: CHAT_ID, text: message }),
-  });
+  try {
+    console.log("إرسال الرسالة للتليجرام:", message);
+    const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const response = await fetch(telegramUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: CHAT_ID, text: message }),
+    });
+    const data = await response.json();
+    if (!data.ok) throw new Error(JSON.stringify(data));
+    console.log("تم الإرسال بنجاح ✅");
+  } catch (err) {
+    console.error("خطأ في الإرسال للتليجرام:", err);
+  }
 }
 
+// === 7️⃣ دالة تأخير ===
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// === 8️⃣ صفحة اختبارية للتأكد من عمل البوت ===
 app.get('/test', (req, res) => {
   res.send('البوت يعمل بنجاح ✅');
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// === 9️⃣ تشغيل السيرفر ===
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
