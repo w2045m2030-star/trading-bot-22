@@ -1,56 +1,55 @@
-import express from "express";
-import fetch from "node-fetch"; // Node 22+ يمكن الاستغناء عنها إذا fetch مدمج
+
+import express from 'express';
+import fetch from 'node-fetch';
 
 const app = express();
-app.use(express.json()); // لتحليل JSON من TradingView
+const PORT = process.env.PORT || 3000;
 
-// === 1️⃣ بياناتك ===
-const TELEGRAM_TOKEN = "8492077880:AAFO6r_G-bWcpGrY2R49Iyz5V-jDQuTyTXM"; // توكن جديد
-const CHAT_ID = "8080222077"; // chat_id الصحيح للبوت
+// إعدادات بوت التليجرام
+const TELEGRAM_BOT_TOKEN = '8492077880:AAH8YiNnJswolfkF9S_md_qXseX9iXFI3bY';
+const CHAT_ID = '8080222077';
 
-// === 2️⃣ استقبال إشارات من TradingView ===
-app.post("/webhook", async (req, res) => {
-  const signal = req.body;
-  console.log("وصلت إشارة جديدة:", signal);
+app.use(express.json());
 
-  // فحص البيانات الأساسية
-  if (!signal || !signal.symbol || !signal.action) {
-    return res.status(400).json({ ok: false, error: "الإشارة غير صحيحة أو ناقصة" });
-  }
+let queue = [];
+let isSending = false;
 
-  try {
-    // إعداد رسالة قابلة للقراءة
-    const text = `📢 إشارة جديدة من TradingView:\n` +
-                 `زوج: ${signal.symbol}\n` +
-                 `نوع العملية: ${signal.action}\n` +
-                 `السعر: ${signal.price}\n` +
-                 `TP: ${signal.tp}\n` +
-                 `SL: ${signal.sl}`;
-
-    // إرسال الرسالة للبوت
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: CHAT_ID, text })
-    });
-
-    const data = await response.json();
-    if (!data.ok) throw new Error(JSON.stringify(data));
-
-    console.log("تم إرسال الإشارة للتليجرام ✅");
-    res.json({ ok: true, message: "تم إرسال الإشارة إلى التليجرام ✅" });
-
-  } catch (err) {
-    console.error("خطأ في الإرسال للتليجرام:", err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+app.post('/webhook', (req, res) => {
+  const data = req.body;
+  const message = data.message || JSON.stringify(data);
+  queue.push(message);
+  res.status(200).send('تم استلام الإشارة ✅');
+  processQueue();
 });
 
-// === 3️⃣ صفحة اختبار رئيسية ===
-app.get("/", (req, res) => {
-  res.send("✅ Trading Bot Server is running and ready for signals!");
+async function processQueue() {
+  if (isSending || queue.length === 0) return;
+  isSending = true;
+
+  while (queue.length > 0) {
+    const msg = queue.shift();
+    await sendToTelegram(msg);
+    await delay(1500);
+  }
+
+  isSending = false;
+}
+
+async function sendToTelegram(message) {
+  const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  await fetch(telegramUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: CHAT_ID, text: message }),
+  });
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+app.get('/test', (req, res) => {
+  res.send('البوت يعمل بنجاح ✅');
 });
 
-// === 4️⃣ تشغيل السيرفر ===
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
