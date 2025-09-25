@@ -1,24 +1,25 @@
 import express from "express";
-import fetch from "node-fetch"; // إذا Node 22+ تقدر تحذفه
+import fetch from "node-fetch"; // Node 22+ ممكن تحذفه إذا fetch مدمج
 
 const app = express();
-app.use(express.json()); // مهم جدًا لتحليل JSON من TradingView
+app.use(express.json());
 
-// 1️⃣ ضع هنا بياناتك
-const TELEGRAM_TOKEN = "8492077880:AAEYjMKo6iWM6UwQCMN583catJ0kdhVBgHg";
-const CHAT_ID = "8080222077";
+// === 1️⃣ بياناتك ===
+const TELEGRAM_TOKEN = "8492077880:AAFLY_UAzKSWunVkocwS5M-Sr49v1XA85B8"; // توكن جديد
+const CHAT_ID = "8080222077"; // رقم الـ chat الخاص بك
 
-// 2️⃣ استقبال إشارات من TradingView
+// === 2️⃣ استقبال إشارات من TradingView ===
 app.post("/webhook", async (req, res) => {
   const signal = req.body;
-  console.log("وصلت إشارة جديدة:", signal); // مهم جدًا للتأكد من وصول البيانات
+  console.log("وصلت إشارة جديدة:", signal);
 
+  // فحص البيانات الأساسية
   if (!signal || !signal.symbol || !signal.action) {
-    return res.status(400).json({ ok: false, error: "الإشارة غير صحيحة" });
+    return res.status(400).json({ ok: false, error: "الإشارة غير صحيحة أو ناقصة" });
   }
 
   try {
-    // تحويل الإشارة إلى رسالة مقروءة
+    // إعداد رسالة قابلة للقراءة
     const text = `📢 إشارة جديدة من TradingView:\n` +
                  `زوج: ${signal.symbol}\n` +
                  `نوع العملية: ${signal.action}\n` +
@@ -26,7 +27,7 @@ app.post("/webhook", async (req, res) => {
                  `TP: ${signal.tp}\n` +
                  `SL: ${signal.sl}`;
 
-    // إرسال الرسالة للتليجرام
+    // إرسال الرسالة للبوت
     const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -36,18 +37,20 @@ app.post("/webhook", async (req, res) => {
     const data = await response.json();
     if (!data.ok) throw new Error(JSON.stringify(data));
 
+    console.log("تم إرسال الإشارة للتليجرام ✅");
     res.json({ ok: true, message: "تم إرسال الإشارة إلى التليجرام ✅" });
+
   } catch (err) {
     console.error("خطأ في الإرسال للتليجرام:", err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// 3️⃣ صفحة تجريبية للرابط الرئيسي
+// === 3️⃣ صفحة اختبار رئيسية ===
 app.get("/", (req, res) => {
   res.send("✅ Trading Bot Server is running and ready for signals!");
 });
 
-// 4️⃣ تشغيل السيرفر
+// === 4️⃣ تشغيل السيرفر ===
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
