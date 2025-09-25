@@ -1,12 +1,12 @@
 import express from "express";
-import fetch from "node-fetch"; // Node 22+ ممكن تحذفه إذا fetch مدمج
+import fetch from "node-fetch"; // Node 22+ يمكن الاستغناء عنها إذا fetch مدمج
 
 const app = express();
-app.use(express.json());
+app.use(express.json()); // لتحليل JSON من TradingView
 
 // === 1️⃣ بياناتك ===
-const TELEGRAM_TOKEN = "8492077880:AAFLY_UAzKSWunVkocwS5M-Sr49v1XA85B8"; // توكن جديد
-const CHAT_ID = "8080222077"; // رقم الـ chat الخاص بك
+const TELEGRAM_TOKEN = "8492077880:AAFO6r_G-bWcpGrY2R49Iyz5V-jDQuTyTXM"; // توكن جديد
+const CHAT_ID = "8080222077"; // chat_id الصحيح للبوت
 
 // === 2️⃣ استقبال إشارات من TradingView ===
 app.post("/webhook", async (req, res) => {
